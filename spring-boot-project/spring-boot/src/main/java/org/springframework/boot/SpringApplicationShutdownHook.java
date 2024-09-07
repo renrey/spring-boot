@@ -54,10 +54,13 @@ class SpringApplicationShutdownHook implements Runnable {
 
 	private final Handlers handlers = new Handlers();
 
+	// 已注册的spring context
 	private final Set<ConfigurableApplicationContext> contexts = new LinkedHashSet<>();
 
+	// 代表正常关闭spring context，会从contexts删掉
 	private final Set<ConfigurableApplicationContext> closedContexts = Collections.newSetFromMap(new WeakHashMap<>());
 
+	// 用来 spring上下文通知 当前构子
 	private final ApplicationContextClosedListener contextCloseListener = new ApplicationContextClosedListener();
 
 	private final AtomicBoolean shutdownHookAdded = new AtomicBoolean(false);
@@ -69,11 +72,21 @@ class SpringApplicationShutdownHook implements Runnable {
 	}
 
 	void registerApplicationContext(ConfigurableApplicationContext context) {
+		// 加入jvm关闭的钩子 -》 用于不正常关闭
+		/**
+		 * @see SpringApplicationShutdownHook#run()
+		 */
 		addRuntimeShutdownHookIfNecessary();
+
+
 		synchronized (SpringApplicationShutdownHook.class) {
 			assertNotInProgress();
+
+			// 往spring上下文加入listener ，监听ContextClosedEvent事件 -》用于正常关闭
 			context.addApplicationListener(this.contextCloseListener);
-			this.contexts.add(context);
+
+			// 用于jvm关闭构造回调
+			this.contexts.add(context);// 上下文集合保存当前上下文？
 		}
 	}
 
@@ -103,7 +116,9 @@ class SpringApplicationShutdownHook implements Runnable {
 			closedContexts = new LinkedHashSet<>(this.closedContexts);
 			actions = new LinkedHashSet<>(this.handlers.getActions());
 		}
+		// 正在正常运行的context
 		contexts.forEach(this::closeAndWait);
+		// 已执行关闭的context
 		closedContexts.forEach(this::closeAndWait);
 		actions.forEach(Runnable::run);
 	}
@@ -202,6 +217,7 @@ class SpringApplicationShutdownHook implements Runnable {
 			// closedContexts} set. This is weak set so that the context can be GC'd once
 			// the {@code close()} method returns.
 			synchronized (SpringApplicationShutdownHook.class) {
+				// 大概正常的上下文关闭 -》去掉contexts，加入closedContexts
 				ApplicationContext applicationContext = event.getApplicationContext();
 				SpringApplicationShutdownHook.this.contexts.remove(applicationContext);
 				SpringApplicationShutdownHook.this.closedContexts

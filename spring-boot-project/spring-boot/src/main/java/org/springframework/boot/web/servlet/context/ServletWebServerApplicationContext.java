@@ -41,6 +41,8 @@ import org.springframework.boot.availability.AvailabilityChangeEvent;
 import org.springframework.boot.availability.ReadinessState;
 import org.springframework.boot.web.context.ConfigurableWebServerApplicationContext;
 import org.springframework.boot.web.context.WebServerGracefulShutdownLifecycle;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.embedded.tomcat.TomcatStarter;
 import org.springframework.boot.web.server.WebServer;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
@@ -155,6 +157,7 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 
 	@Override
 	protected void onRefresh() {
+		// onRefresh 中执行创建服务器
 		super.onRefresh();
 		try {
 			createWebServer();
@@ -175,14 +178,30 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 	private void createWebServer() {
 		WebServer webServer = this.webServer;
 		ServletContext servletContext = getServletContext();
+		// 未创建过
 		if (webServer == null && servletContext == null) {
-			StartupStep createWebServer = this.getApplicationStartup().start("spring.boot.webserver.create");
+			StartupStep createWebServer = this.getApplicationStartup().start("spring.boot.webserver.create");// 打印标记相关
+
+			/**
+			 * @see TomcatServletWebServerFactory#getWebServer(ServletContextInitializer...)
+			 *
+			 * 调用Initializer -》tomcat进行ServletContainer初始化时
+			 * @see TomcatStarter#onStartup(Set, ServletContext)
+			 */
 			ServletWebServerFactory factory = getWebServerFactory();
 			createWebServer.tag("factory", factory.getClass().toString());
+			// 1. getSelfInitializer 对web中创建的ServletContext进行处理，交给这边sb做一些处理！！！
+			// 2. getWebServer : 创建server类
 			this.webServer = factory.getWebServer(getSelfInitializer());
+
 			createWebServer.end();
+
+			// 注册 bean监听 上下文启动 完成、关闭事件
+
+			// 优雅关闭
 			getBeanFactory().registerSingleton("webServerGracefulShutdown",
 					new WebServerGracefulShutdownLifecycle(this.webServer));
+			// 触发tomcat的启动、关闭！！！
 			getBeanFactory().registerSingleton("webServerStartStop",
 					new WebServerStartStopLifecycle(this, this.webServer));
 		}
@@ -231,6 +250,7 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 		prepareWebApplicationContext(servletContext);
 		registerApplicationScope(servletContext);
 		WebApplicationContextUtils.registerEnvironmentBeans(getBeanFactory(), servletContext);
+		//
 		for (ServletContextInitializer beans : getServletContextInitializerBeans()) {
 			beans.onStartup(servletContext);
 		}

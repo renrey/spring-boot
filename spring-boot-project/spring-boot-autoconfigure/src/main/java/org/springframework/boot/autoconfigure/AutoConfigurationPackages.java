@@ -129,7 +129,7 @@ public abstract class AutoConfigurationPackages {
 			AnnotationAttributes attributes = AnnotationAttributes
 					.fromMap(metadata.getAnnotationAttributes(AutoConfigurationPackage.class.getName(), false));
 			List<String> packageNames = new ArrayList<>(Arrays.asList(attributes.getStringArray("basePackages")));
-			for (Class<?> basePackageClass : attributes.getClassArray("basePackageClasses")) {
+			for (Class<?> basePackageClass : attributes.getClassArray("`basePackageClasses`")) {
 				packageNames.add(basePackageClass.getPackage().getName());
 			}
 			if (packageNames.isEmpty()) {

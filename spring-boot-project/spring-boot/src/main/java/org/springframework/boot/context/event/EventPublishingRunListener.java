@@ -48,6 +48,7 @@ import org.springframework.util.ErrorHandler;
  * @author Brian Clozel
  * @since 1.0.0
  */
+// 功能：增强多个sb启动周期，可支持applicationListener对多个点进行监听处理  原理：对应地方执行时，调用RunListener对扩展方法，RunListener会发布对应的event到广播
 public class EventPublishingRunListener implements SpringApplicationRunListener, Ordered {
 
 	private final SpringApplication application;
@@ -99,6 +100,8 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 		}
 		this.initialMulticaster.multicastEvent(new ApplicationPreparedEvent(this.application, this.args, context));
 	}
+
+	// 下面的都是代表正在使用，所以使用发布的都是AvailabilityChangeEvent，只是里面加上状态
 
 	@Override
 	public void started(ConfigurableApplicationContext context) {

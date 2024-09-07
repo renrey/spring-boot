@@ -281,8 +281,10 @@ public class SpringApplication {
 		this.resourceLoader = resourceLoader;
 		Assert.notNull(primarySources, "PrimarySources must not be null");
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
-		this.webApplicationType = WebApplicationType.deduceFromClasspath();
+		this.webApplicationType = WebApplicationType.deduceFromClasspath();// 判断当前web应用是那种类型（webflux、springmvc）
+		//  从springFactories 加载3种对象
 		this.bootstrapRegistryInitializers = getBootstrapRegistryInitializersFromSpringFactories();
+		// 把spring上下文常用的 自定义函数类保存到 sb的应用类中
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
 		this.mainApplicationClass = deduceMainApplicationClass();
@@ -320,27 +322,51 @@ public class SpringApplication {
 	 * @return a running {@link ApplicationContext}
 	 */
 	public ConfigurableApplicationContext run(String... args) {
+		// 启动
+
+		// SW计数
 		StopWatch stopWatch = new StopWatch();
 		stopWatch.start();
+
+		// 创建sb 这边重新定义的context （没有继承spring原生）
 		DefaultBootstrapContext bootstrapContext = createBootstrapContext();
 		ConfigurableApplicationContext context = null;
 		configureHeadlessProperty();
+
+		// springboot定义的listner
+		// 默认EventPublishingRunListener -》加入sb各个周期状态的消息通知
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting(bootstrapContext, this.mainApplicationClass);
 		try {
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+
+			// 环境配置 -》 env配置切换
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, bootstrapContext, applicationArguments);
 			configureIgnoreBeanInfo(environment);
 			Banner printedBanner = printBanner(environment);
+			// 创建  spring原生上下文对象 -》实际是基于对应web应用包装的上下文
+			/**
+			 * 3种类: 1.springmvc 2. webflux 3. 原生基于注解
+			 * @see ApplicationContextFactory
+			 */
 			context = createApplicationContext();
-			context.setApplicationStartup(this.applicationStartup);
+			context.setApplicationStartup(this.applicationStartup);// 启动类保存
+
+			// 一些前操作
 			prepareContext(bootstrapContext, context, environment, listeners, applicationArguments, printedBanner);
+
+			// 核心： 刷新spring容器上下文！！！ -> 构建原生spring，还加入sb的特性（如2种关闭构子）
 			refreshContext(context);
+
+			// boot在原生spring 构建后增强操作 -》自定义扩展点
 			afterRefresh(context, applicationArguments);
-			stopWatch.stop();
+
+			stopWatch.stop();// sw计数结束 -》 完成整个应用的初始化！！！
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
 			}
+
+			// 调用boot的RunListeners （即spring上下文构建完成后的执行）
 			listeners.started(context);
 			callRunners(context, applicationArguments);
 		}
@@ -361,6 +387,7 @@ public class SpringApplication {
 
 	private DefaultBootstrapContext createBootstrapContext() {
 		DefaultBootstrapContext bootstrapContext = new DefaultBootstrapContext();
+		// 执行一些初始化 函数 -> 一般用于加载配置
 		this.bootstrapRegistryInitializers.forEach((initializer) -> initializer.initialize(bootstrapContext));
 		return bootstrapContext;
 	}
@@ -407,16 +434,20 @@ public class SpringApplication {
 			logStartupInfo(context.getParent() == null);
 			logStartupProfileInfo(context);
 		}
+		// 注册一堆bean
+
 		// Add boot specific singleton beans
 		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+		// 启动参数
 		beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
 		if (printedBanner != null) {
-			beanFactory.registerSingleton("springBootBanner", printedBanner);
+			beanFactory.registerSingleton("springBootBanner", printedBanner);//打印的
 		}
 		if (beanFactory instanceof DefaultListableBeanFactory) {
 			((DefaultListableBeanFactory) beanFactory)
 					.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
 		}
+		// 延迟加载
 		if (this.lazyInitialization) {
 			context.addBeanFactoryPostProcessor(new LazyInitializationBeanFactoryPostProcessor());
 		}
@@ -428,9 +459,14 @@ public class SpringApplication {
 	}
 
 	private void refreshContext(ConfigurableApplicationContext context) {
+		// 往context 加入关闭 全局上下文的构子 -》2种方式： 1. jvm关闭构造--》不正常关闭 2. 正常关闭context
 		if (this.registerShutdownHook) {
 			shutdownHook.registerApplicationContext(context);
 		}
+
+		// 主要就是原生spring 的refresh
+		// 不过2种类（webflux、springmvc），对refresh方法加了捕获异常，出现异常时，关闭对应服务器类！！！
+		// 服务器类在 onRefresh中 创建
 		refresh(context);
 	}
 
@@ -593,6 +629,7 @@ public class SpringApplication {
 	 * @see #setApplicationContextFactory(ApplicationContextFactory)
 	 */
 	protected ConfigurableApplicationContext createApplicationContext() {
+		// 通过工厂实现选择
 		return this.applicationContextFactory.create(this.webApplicationType);
 	}
 

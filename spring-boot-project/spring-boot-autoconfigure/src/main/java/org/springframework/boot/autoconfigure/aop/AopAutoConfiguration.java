@@ -47,9 +47,9 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 public class AopAutoConfiguration {
 
 	@Configuration(proxyBeanMethods = false)
-	@ConditionalOnClass(Advice.class)
+	@ConditionalOnClass(Advice.class)// 没使用aop，直接不自动配置
 	static class AspectJAutoProxyingConfiguration {
-
+		// 其实下面就是根据spring.aop.proxy-target-class配置，做proxyTargetClass配置-》EnableAspectJAutoProxy注解的数下
 		@Configuration(proxyBeanMethods = false)
 		@EnableAspectJAutoProxy(proxyTargetClass = false)
 		@ConditionalOnProperty(prefix = "spring.aop", name = "proxy-target-class", havingValue = "false")
@@ -78,6 +78,7 @@ public class AopAutoConfiguration {
 			return (beanFactory) -> {
 				if (beanFactory instanceof BeanDefinitionRegistry) {
 					BeanDefinitionRegistry registry = (BeanDefinitionRegistry) beanFactory;
+					// 保证spring容器有AbstractAutoProxyCreator
 					AopConfigUtils.registerAutoProxyCreatorIfNecessary(registry);
 					AopConfigUtils.forceAutoProxyCreatorToUseClassProxying(registry);
 				}

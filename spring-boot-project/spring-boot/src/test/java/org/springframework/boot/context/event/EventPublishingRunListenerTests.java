@@ -71,7 +71,7 @@ class EventPublishingRunListenerTests {
 		checkApplicationEvents(ApplicationContextInitializedEvent.class);
 		this.runListener.contextLoaded(context);
 		checkApplicationEvents(ApplicationPreparedEvent.class);
-		context.refresh();
+	`	context.refresh();
 		this.runListener.started(context);
 		checkApplicationEvents(ApplicationStartedEvent.class, AvailabilityChangeEvent.class);
 		this.runListener.running(context);

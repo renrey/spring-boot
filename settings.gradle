@@ -23,7 +23,7 @@ pluginManagement {
 
 plugins {
 	id "com.gradle.enterprise" version "3.6.1"
-	id "io.spring.ge.conventions" version "0.0.8"
+//	id "io.spring.ge.conventions" version "0.0.8"
 }
 
 rootProject.name="spring-boot-build"
@@ -80,6 +80,6 @@ file("${rootDir}/spring-boot-project/spring-boot-starters").eachDirMatch(~/sprin
 	include "spring-boot-project:spring-boot-starters:${it.name}"
 }
 
-file("${rootDir}/spring-boot-tests/spring-boot-smoke-tests").eachDirMatch(~/spring-boot-smoke-test.*/) {
-	include "spring-boot-tests:spring-boot-smoke-tests:${it.name}"
-}
+//file("${rootDir}/spring-boot-tests/spring-boot-smoke-tests").eachDirMatch(~/spring-boot-smoke-test.*/) {
+//	include "spring-boot-tests:spring-boot-smoke-tests:${it.name}"
+//}

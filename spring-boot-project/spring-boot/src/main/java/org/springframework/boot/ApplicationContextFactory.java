@@ -45,11 +45,11 @@ public interface ApplicationContextFactory {
 		try {
 			switch (webApplicationType) {
 			case SERVLET:
-				return new AnnotationConfigServletWebServerApplicationContext();
+				return new AnnotationConfigServletWebServerApplicationContext();// springmvc
 			case REACTIVE:
-				return new AnnotationConfigReactiveWebServerApplicationContext();
+				return new AnnotationConfigReactiveWebServerApplicationContext();// WEBFLUX
 			default:
-				return new AnnotationConfigApplicationContext();
+				return new AnnotationConfigApplicationContext();// 普通原生，使用注解，不使用xml
 			}
 		}
 		catch (Exception ex) {

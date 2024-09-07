@@ -184,18 +184,30 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 		}
 		Tomcat tomcat = new Tomcat();
 		File baseDir = (this.baseDirectory != null) ? this.baseDirectory : createTempDir("tomcat");
-		tomcat.setBaseDir(baseDir.getAbsolutePath());
+		tomcat.setBaseDir(baseDir.getAbsolutePath());// tomcat文件目录
+
+		// 默认connector：Http11NioProtocol  -》 nio方式，但是协议就是到1.1 支持长连接
 		Connector connector = new Connector(this.protocol);
 		connector.setThrowOnFailure(true);
+
+		// 绑定到service
 		tomcat.getService().addConnector(connector);
 		customizeConnector(connector);
 		tomcat.setConnector(connector);
 		tomcat.getHost().setAutoDeploy(false);
+
+		// 把sb下的配置参数，配置到tomcat的Engine -》代表整个tomcat对象 被sb设置
 		configureEngine(tomcat.getEngine());
+
+		// 加入自定义的connector -》 看着tomcat的service 就是用默认第一个
 		for (Connector additionalConnector : this.additionalTomcatConnectors) {
 			tomcat.getService().addConnector(additionalConnector);
 		}
+
+		// 初始化！！！ 执行initializers
 		prepareContext(tomcat.getHost(), initializers);
+
+		// 创建sb封装的TomcatWebServer对象 （上面的都是tomcat原生对象）
 		return getTomcatWebServer(tomcat);
 	}
 
@@ -234,7 +246,7 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 		loader.setDelegate(true);
 		context.setLoader(loader);
 		if (isRegisterDefaultServlet()) {
-			addDefaultServlet(context);
+			addDefaultServlet(context);// 加入一個默认监听/ 的catalina的servlet -》不是spring的
 		}
 		if (shouldRegisterJspServlet()) {
 			addJspServlet(context);
@@ -272,14 +284,17 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 	private void addDefaultServlet(Context context) {
 		Wrapper defaultServlet = context.createWrapper();
 		defaultServlet.setName("default");
+		// 使用 catalina的DefaultServlet处理
 		defaultServlet.setServletClass("org.apache.catalina.servlets.DefaultServlet");
 		defaultServlet.addInitParameter("debug", "0");
 		defaultServlet.addInitParameter("listings", "false");
 		defaultServlet.setLoadOnStartup(1);
 		// Otherwise the default location of a Spring DispatcherServlet cannot be set
 		defaultServlet.setOverridable(true);
+
+		// 监听/的defaultServlet 注册到context
 		context.addChild(defaultServlet);
-		context.addServletMappingDecoded("/", "default");
+		context.addServletMappingDecoded("/", "default");// 监听/, 映射到default
 	}
 
 	private void addJspServlet(Context context) {
@@ -357,6 +372,7 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 	 * @param initializers initializers to apply
 	 */
 	protected void configureContext(Context context, ServletContextInitializer[] initializers) {
+		// 生成TomcatStarter，y用於调用initializers
 		TomcatStarter starter = new TomcatStarter(initializers);
 		if (context instanceof TomcatEmbeddedContext) {
 			TomcatEmbeddedContext embeddedContext = (TomcatEmbeddedContext) context;
